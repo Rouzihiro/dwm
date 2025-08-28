@@ -262,9 +262,33 @@ static Client *wintosystrayicon(Window w);
 static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
-static void xinitvisual();
+static Visual *visual;
+static int depth;
 static void zoom(const Arg *arg);
 
+/* required globals for X and visuals */
+static Display *dpy;
+static int screen;
+static Visual *visual;
+static int depth;
+static XVisualInfo template;
+void
+xinitvisual(void) {
+    XVisualInfo *infos;
+    XRenderPictFormat *fmt;
+    int nitems;
+    visual = DefaultVisual(dpy, screen);
+    depth = DefaultDepth(dpy, screen);
+    for (infos = XGetVisualInfo(dpy, VisualScreenMask, &template, &nitems); nitems; infos++, nitems--) {
+        fmt = XRenderFindVisualFormat(dpy, infos->visual);
+        if (fmt->type == PictTypeDirect && fmt->direct.alphaMask) {
+            visual = infos->visual;
+            depth = infos->depth;
+            break;
+        }
+    }
+}
+static void zoom(const Arg *arg);
 /* variables */
 static Systray *systray = NULL;
 static const char broken[] = "broken";
@@ -862,13 +886,13 @@ drawstatusbar(Monitor *m, int bh, char* stext) {
 					char buf[8];
 					memcpy(buf, (char*)text+i+1, 7);
 					buf[7] = '\0';
-					drw_clr_create(drw, &drw->scheme[ColFg], buf);
+					drw_clr_create(drw, &drw->scheme[ColFg], buf, 0xdd);
 					i += 7;
 				} else if (text[i] == 'b') {
 					char buf[8];
 					memcpy(buf, (char*)text+i+1, 7);
 					buf[7] = '\0';
-					drw_clr_create(drw, &drw->scheme[ColBg], buf);
+					drw_clr_create(drw, &drw->scheme[ColBg], buf, 0xdd);
 					i += 7;
 				} else if (text[i] == 'd') {
 					drw->scheme[ColFg] = scheme[SchemeNorm][ColFg];
@@ -1844,6 +1868,7 @@ setup(void)
 	XSetWindowAttributes wa;
 	Atom utf8string;
 	struct sigaction sa;
+	static const unsigned int alphas[] = {0xdd, 0xbb, 0xff}; // fg, bg, border
 
 	/* do not transform children into zombies when they terminate */
 	sigemptyset(&sa.sa_mask);
@@ -1897,9 +1922,9 @@ setup(void)
 	cursor[CurMove] = drw_cur_create(drw, XC_fleur);
 	/* init appearance */
 	scheme = ecalloc(LENGTH(colors) + 1, sizeof(Clr *));
-	scheme[LENGTH(colors)] = drw_scm_create(drw, colors[0], 3);
+	scheme[LENGTH(colors)] = drw_scm_create(drw, colors[0], alphas, 3);
 	for (i = 0; i < LENGTH(colors); i++)
-		scheme[i] = drw_scm_create(drw, colors[i], 3);
+		scheme[i] = drw_scm_create(drw, colors[i], alphas, 3);
 	/* init system tray */
 	updatesystray();
 	/* init bars */
