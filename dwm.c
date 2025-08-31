@@ -106,10 +106,12 @@ struct Client {
 	int bw, oldbw;
 	unsigned int tags;
 	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+	pid_t pid;
 	Client *next;
 	Client *snext;
 	Monitor *mon;
 	Window win;
+	double opacity;
 };
 
 typedef struct {
@@ -194,6 +196,7 @@ static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
+static pid_t getparentprocess(pid_t p);
 static Client *getpointerclient(void);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
@@ -202,6 +205,7 @@ static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, int focused);
 static void grabkeys(void);
 static void incnmaster(const Arg *arg);
+static int isdescprocess(pid_t p, pid_t c);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
 static void manage(Window w, XWindowAttributes *wa);
@@ -1026,6 +1030,25 @@ expose(XEvent *e)
 			updatesystray();
 	}
 }
+
+void
+changeopacity(const Arg *arg)
+{
+    Client *c = selmon->sel;
+    if(!c)
+        return;
+
+    double new_opacity = c->opacity + arg->f;
+    if(new_opacity > 1.0) new_opacity = 1.0;
+    if(new_opacity < 0.0) new_opacity = 0.0;
+    c->opacity = new_opacity;
+
+    unsigned long o = (unsigned long)(0xffffffff * new_opacity);
+    XChangeProperty(dpy, c->win, XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False),
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&o, 1);
+}
+
 
 void
 focus(Client *c)
