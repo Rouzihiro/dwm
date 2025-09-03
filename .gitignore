@@ -1,13 +1,6 @@
-# Build artifacts
 *.o
-dwm
-drw
-util
-
-# Backup / temporary files
-*~
-*.rej
-*.orig
-
-# Ignore compiled binaries, logs, etc.
-*.out
+dusk
+duskc
+config.*
+*.txt
+*.sh

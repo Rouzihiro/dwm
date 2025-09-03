@@ -1,12 +1,18 @@
-# dwm - dynamic window manager
+# dusk - a dwm fork
 # See LICENSE file for copyright and license details.
 
 include config.mk
 
-SRC = drw.c dwm.c util.c
+SRC = drw.c dusk.c util.c
 OBJ = ${SRC:.c=.o}
 
-all: dwm
+ifdef HAVE_DBUS
+DUSKC_TARGET = duskc
+DUSKC_INSTALL = cp -f duskc ${DESTDIR}${PREFIX}/bin
+DUSKC_CLEAN = rm -f duskc
+endif
+
+all: dusk $(DUSKC_TARGET)
 
 .c.o:
 	${CC} -c ${CFLAGS} $<
@@ -16,30 +22,34 @@ ${OBJ}: config.h config.mk
 config.h:
 	cp config.def.h $@
 
-dwm: ${OBJ}
+dusk: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
-clean:
-	rm -f dwm ${OBJ} dwm-${VERSION}.tar.gz
+duskc:
+	${CC} ${CFLAGS} -o $@ duskc.c ${LDFLAGS}
 
-dist: clean
-	mkdir -p dwm-${VERSION}
-	cp -R LICENSE Makefile README config.def.h config.mk\
-		dwm.1 drw.h util.h ${SRC} dwm.png transient.c dwm-${VERSION}
-	tar -cf dwm-${VERSION}.tar dwm-${VERSION}
-	gzip dwm-${VERSION}.tar
-	rm -rf dwm-${VERSION}
+clean:
+	rm -f dusk ${OBJ}
+	${DUSKC_CLEAN}
 
 install: all
 	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f dwm ${DESTDIR}${PREFIX}/bin
-	chmod 755 ${DESTDIR}${PREFIX}/bin/dwm
+	rm -f ${DESTDIR}${PREFIX}/bin/dusk
+	cp -f dusk ${DESTDIR}${PREFIX}/bin
+	${DUSKC_INSTALL}
+	chmod 755 ${DESTDIR}${PREFIX}/bin/dusk
+	[ -n "${DUSKC_TARGET}" ] && chmod 755 ${DESTDIR}${PREFIX}/bin/duskc || true
 	mkdir -p ${DESTDIR}${MANPREFIX}/man1
-	sed "s/VERSION/${VERSION}/g" < dwm.1 > ${DESTDIR}${MANPREFIX}/man1/dwm.1
-	chmod 644 ${DESTDIR}${MANPREFIX}/man1/dwm.1
+	sed "s/VERSION/${VERSION}/g" < dusk.1 > ${DESTDIR}${MANPREFIX}/man1/dusk.1
+	chmod 644 ${DESTDIR}${MANPREFIX}/man1/dusk.1
+	mkdir -p /usr/share/xsessions
+	test -f /usr/share/xsessions/dusk.desktop || cp -n dusk.desktop /usr/share/xsessions/
+	chmod 644 /usr/share/xsessions/dusk.desktop
 
 uninstall:
-	rm -f ${DESTDIR}${PREFIX}/bin/dwm\
-		${DESTDIR}${MANPREFIX}/man1/dwm.1
+	rm -f ${DESTDIR}${PREFIX}/bin/dusk\
+		${DESTDIR}${MANPREFIX}/man1/dusk.1\
+		/usr/share/xsessions/dusk.desktop
+	[ -n "${DUSKC_TARGET}" ] && rm -f ${DESTDIR}${PREFIX}/bin/duskc || true
 
-.PHONY: all clean dist install uninstall
+.PHONY: all clean install uninstall
